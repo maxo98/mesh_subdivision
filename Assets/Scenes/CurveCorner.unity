@@ -170,6 +170,10 @@ MonoBehaviour:
   numberOfPoints: 5
   mainCamera: {fileID: 371006587}
   pointToDraw: {fileID: 1180495142688951780, guid: a724ea7ea4c348a4788ebe972f828f83, type: 3}
+  defaultPointMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  segmentationPointMaterial: {fileID: 2100000, guid: bd0a315ea1d2bae4a969d651b0d9f85c, type: 2}
+  u: 0.3
+  v: 0.8
 --- !u!1 &334707221
 GameObject:
   m_ObjectHideFlags: 0

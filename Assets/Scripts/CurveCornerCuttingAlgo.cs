@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class CurveCornerCuttingAlgo : MonoBehaviour
 {
@@ -14,10 +16,15 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
     [SerializeField] private int numberOfPoints;
     [SerializeField] private Camera mainCamera;
     [SerializeField] private GameObject pointToDraw;
+    [SerializeField] private Material defaultPointMaterial;
+    [SerializeField] private Material segmentationPointMaterial;
+    [SerializeField] private float u;
+    [SerializeField] private float v;
     
     private DirectionSelected _idDirectionSelected;
     private Dictionary<DirectionSelected, List<GameObject>> _listPointsByFace;
-
+    private Dictionary<DirectionSelected, List<GameObject>> _listPointsSegmented;
+    
     private List<Vector3> _matrixA;
     private List<Vector3> _matrixB;
     private List<Vector3> _matrixC;
@@ -34,17 +41,74 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
             [DirectionSelected.Left] = new List<GameObject>(),
             [DirectionSelected.Right] = new List<GameObject>()
         };
+        
+        _listPointsSegmented = new Dictionary<DirectionSelected, List<GameObject>>
+        {
+            [DirectionSelected.Front] = new List<GameObject>(),
+            [DirectionSelected.Back] = new List<GameObject>(),
+            [DirectionSelected.Left] = new List<GameObject>(),
+            [DirectionSelected.Right] = new List<GameObject>()
+        };
     }
 
     void Update()
     {
-        ManagerClicks();
+        ManagerMouse();
+        ManagerKeyboard();
     }
 
-    private void ManagerClicks()
+    private void DrawPolygon()
+    {
+        foreach (var pair in _listPointsSegmented)
+        {
+            for (var i = 0; i < pair.Value.Count - 1; ++i)
+            {
+                DrawLine(pair.Value[i].transform.position, pair.Value[i  + 1].transform.position);
+            }
+        }
+    }
+
+    private void DrawLine(Vector3 startPosition, Vector3 endPosition)
+    {
+        GameObject myLine = new GameObject();
+        myLine.transform.position = startPosition;
+        myLine.AddComponent<LineRenderer>();
+        LineRenderer lr = myLine.GetComponent<LineRenderer>();
+        lr.material = defaultPointMaterial;
+        lr.startWidth = 0.1f;
+        lr.endWidth = 0.1f;
+        lr.SetPosition(0, startPosition);
+        lr.SetPosition(1, endPosition);
+    }
+    
+    private void ManagerKeyboard()
+    {
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            SegmentationSegment(_listPointsByFace[DirectionSelected.Front]);
+            DrawPolygon();   
+        }
+    }
+    private void ManagerMouse()
     {
         if (Input.GetMouseButtonDown(0))
             OnLeftClick();
+    }
+
+    private void SegmentationSegment(IReadOnlyList<GameObject> points)
+    {
+        if (points.Count < 3)
+            return;
+
+        for (var i = 0; i < points.Count - 1; ++i)
+        {
+            var pointA = points[i].transform.position;
+            var pointB = points[i + 1].transform.position;
+            var segmentationPointA = pointA + (pointB - pointA) * u;
+            var segmentationPointB = pointA + (pointB - pointA) * v;
+            InstantiatePoint(segmentationPointA, segmentationPointMaterial, _listPointsSegmented[DirectionSelected.Front]);
+            InstantiatePoint(segmentationPointB, segmentationPointMaterial, _listPointsSegmented[DirectionSelected.Front]);
+        }
     }
     
     private void OnLeftClick()
@@ -55,8 +119,15 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
         if (!Physics.Raycast(ray, out var hit, Mathf.Infinity, layerMask, QueryTriggerInteraction.Ignore) || _listPointsByFace[_idDirectionSelected].Count >= numberOfPoints)
             return;
 
-        var go = Instantiate(pointToDraw, hit.point, Quaternion.identity);
-        _listPointsByFace[_idDirectionSelected].Add(go);
+        InstantiatePoint(hit.point, defaultPointMaterial, _listPointsByFace[_idDirectionSelected]);
+    }
+
+    private void InstantiatePoint(Vector3 position, Material materialPoint, List<GameObject> listPoints = null)
+    {
+        var go = Instantiate(pointToDraw, position, Quaternion.identity);
+        go.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+        go.GetComponent<MeshRenderer>().material = materialPoint;
+        listPoints?.Add(go);
     }
     
     public void OnClickMoveCameraRightSide()
