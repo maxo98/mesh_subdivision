@@ -44,59 +44,14 @@ public class LoopSub : MonoBehaviour
         Dictionary<(int, int), int> edgeToVert = new Dictionary<(int, int), int>();
         List<Vector3> newVert = new List<Vector3>();
         List<int> newTriangles = new List<int>();
+        List<Vector3>[] sums = new List<Vector3>[vertices.Count];
+        int[] neighbors = new int[vertices.Count];
 
-        //Even vertices
         for(int i = 0; i < vertices.Count; i++)
         {
-            int n = 0;
-            Vector3 sum = Vector3.zero;
-            HashSet<Vector3> neighbors = new HashSet<Vector3>();
-            Vector3 a = Vector3.zero;
-            Vector3 b = Vector3.zero;
-
-            for(int cpt = 0; cpt < triangles.Count; cpt = cpt + 3)
-            {
-                if(i == triangles[cpt] || i == triangles[cpt+1] || i == triangles[cpt+2])
-                {
-                    for(int itIndex = 0; itIndex < 3; itIndex++)
-                    {
-                        if(i != triangles[cpt + itIndex] && neighbors.Contains(vertices[triangles[cpt + itIndex]]) == false)
-                        {
-                            if(neighbors.Count == 0)
-                            {
-                                a = vertices[triangles[cpt + itIndex]];
-
-                            }else if(neighbors.Count == 1)
-                            {
-                                b = vertices[triangles[cpt + itIndex]];
-                            }
-
-                            sum += vertices[triangles[cpt + itIndex]];
-                            neighbors.Add(vertices[triangles[cpt + itIndex]]);
-                        }
-                    }
-                }
-            }
-
-            n = neighbors.Count;
-            
-
-            if(n > 2)
-            {
-                float beta = 0;
-            
-                if(n > 3)
-                {
-                    beta = (1 / n) * (5.0f/8.0f - Mathf.Pow(3.0f/8.0f + 1.0f/4.0f * Mathf.Cos((2.0f * Mathf.PI)/n ), 2));
-                }else{
-                    beta = 3.0f / 16.0f;
-                }
-
-                newVert.Add(vertices[i] * (1 - n * beta) + sum * beta);
-            }else{
-
-                newVert.Add(1.0f/8.0f*(a + b) + 3.0f/4.0f*(vertices[i]));
-            }
+            neighbors[i] = 0;
+            sums[i] = new List<Vector3>();
+            newVert.Add(Vector3.zero);
         }
 
         //Odd vertices
@@ -120,6 +75,9 @@ public class LoopSub : MonoBehaviour
 
                 edgeToVert[(triangles[i], triangles[i+1])] = newVert.Count-1;
 
+                sums[triangles[i]].Add(newVert[newVert.Count-1]);
+                sums[triangles[i+1]].Add(newVert[newVert.Count-1]);
+
             }else if(triangles[i] > triangles[i+1] && edgeToVert.ContainsKey((triangles[i+1], triangles[i])) == false)
             {
 
@@ -137,6 +95,9 @@ public class LoopSub : MonoBehaviour
                 }
 
                 edgeToVert[(triangles[i+1], triangles[i])] = newVert.Count-1;
+
+                sums[triangles[i]].Add(newVert[newVert.Count-1]);
+                sums[triangles[i+1]].Add(newVert[newVert.Count-1]);
             }
 
             if(triangles[i+1] < triangles[i+2] && edgeToVert.ContainsKey((triangles[i+1], triangles[i+2])) == false)
@@ -157,6 +118,9 @@ public class LoopSub : MonoBehaviour
 
                 edgeToVert[(triangles[i+1], triangles[i+2])] = newVert.Count-1;
 
+                sums[triangles[i+2]].Add(newVert[newVert.Count-1]);
+                sums[triangles[i+1]].Add(newVert[newVert.Count-1]);
+
             }else if(triangles[i+1] > triangles[i+2] && edgeToVert.ContainsKey((triangles[i+2], triangles[i+1])) == false)
             {
                 int a = triangles[i+1];
@@ -173,6 +137,9 @@ public class LoopSub : MonoBehaviour
                 }
 
                 edgeToVert[(triangles[i+2], triangles[i+1])] = newVert.Count-1;
+
+                sums[triangles[i+2]].Add(newVert[newVert.Count-1]);
+                sums[triangles[i+1]].Add(newVert[newVert.Count-1]);
             }
 
             if(triangles[i+2] < triangles[i] && edgeToVert.ContainsKey((triangles[i+2], triangles[i])) == false)
@@ -193,6 +160,9 @@ public class LoopSub : MonoBehaviour
 
                 edgeToVert[(triangles[i+2], triangles[i])] = newVert.Count-1;
 
+                sums[triangles[i]].Add(newVert[newVert.Count-1]);
+                sums[triangles[i+2]].Add(newVert[newVert.Count-1]);
+
             }else if(triangles[i+2] > triangles[i] && edgeToVert.ContainsKey((triangles[i], triangles[i+2])) == false)
             {
 
@@ -211,6 +181,45 @@ public class LoopSub : MonoBehaviour
 
                 edgeToVert[(triangles[i], triangles[i+2])] = newVert.Count-1;
 
+                sums[triangles[i]].Add(newVert[newVert.Count-1]);
+                sums[triangles[i+2]].Add(newVert[newVert.Count-1]);
+            }
+        }
+
+        //Even vertices
+        for(int i = 0; i < vertices.Count; i++)
+        {
+            float n = 0;
+            Vector3 a = Vector3.zero;
+            Vector3 b = Vector3.zero;
+
+            Vector3 sum = Vector3.zero;
+
+            for(int cpt = 0; cpt < sums[i].Count; cpt++)
+            {
+                sum += sums[i][cpt];
+            }
+
+            n = sums[i].Count;
+            
+
+            if(n > 2)
+            {
+                float beta = 0;
+            
+                if(n > 3)
+                {
+                    beta = (1 / n) * (5.0f/8.0f - Mathf.Pow(3.0f/8.0f + 1.0f/4.0f * Mathf.Cos((2.0f * Mathf.PI)/n ), 2));
+                }else{
+                    beta = 3.0f / 16.0f;
+                }
+
+                Debug.Log((1 - n * beta) + " " + vertices[i]);
+
+                newVert[i] = vertices[i] * (1 - n * beta) + sum * beta;
+            }else{
+
+                newVert[i] = 1.0f/8.0f*(a + b) + 3.0f/4.0f*(vertices[i]);
             }
         }
 
