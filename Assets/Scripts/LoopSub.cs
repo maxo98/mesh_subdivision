@@ -296,7 +296,7 @@ public class LoopSub : MonoBehaviour
         
     }
 
-    public void DoubleFaceIndices(ref int[] indices)
+    public static void DoubleFaceIndices(ref int[] indices)
     {
         int n = 3;
 
