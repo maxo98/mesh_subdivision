@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class FaceSubdivision
@@ -65,7 +62,8 @@ public class Edge
 public class CatmullClarkSubdivision : MonoBehaviour
 {
     [SerializeField] private MeshFilter originalMeshFilter;
-    [SerializeField] private int currentSubdivision; 
+    [SerializeField] private int currentSubdivision;
+    [SerializeField] private int subdivisionLimit = 3;
 
     private Mesh _originalMesh;
     private List<Vector3>_subdividedVerticesList;
@@ -101,28 +99,14 @@ public class CatmullClarkSubdivision : MonoBehaviour
         _subdivisionCount++;
     }
 
-    private void Update()
+    public void HigherSubdivision()
     {
-        
-        if (Input.GetKeyDown(KeyCode.RightArrow) && currentSubdivision < 3)
+        if (currentSubdivision >= subdivisionLimit) return;
+        currentSubdivision++;
+        if(currentSubdivision >= _subdivisionCount)
+            Subdivide();
+        else
         {
-            currentSubdivision++;
-            if(currentSubdivision >= _subdivisionCount)
-                Subdivide();
-            else
-            {
-                _originalMesh = new Mesh
-                {
-                    vertices = _subdivisionSaves[currentSubdivision].Item2,
-                    triangles = _subdivisionSaves[currentSubdivision].Item1
-                };
-                originalMeshFilter.mesh = _originalMesh;
-                originalMeshFilter.mesh.RecalculateNormals();
-            }
-        }
-        else if (Input.GetKeyDown(KeyCode.LeftArrow) && currentSubdivision > 0)
-        {
-            currentSubdivision--;
             _originalMesh = new Mesh
             {
                 vertices = _subdivisionSaves[currentSubdivision].Item2,
@@ -131,6 +115,19 @@ public class CatmullClarkSubdivision : MonoBehaviour
             originalMeshFilter.mesh = _originalMesh;
             originalMeshFilter.mesh.RecalculateNormals();
         }
+    }
+
+    public void LowerSubdivision()
+    {
+        if (currentSubdivision <= 0) return;
+        currentSubdivision--;
+        _originalMesh = new Mesh
+        {
+            vertices = _subdivisionSaves[currentSubdivision].Item2,
+            triangles = _subdivisionSaves[currentSubdivision].Item1
+        };
+        originalMeshFilter.mesh = _originalMesh;
+        originalMeshFilter.mesh.RecalculateNormals();
     }
 
     private void Subdivide()
