@@ -5,36 +5,69 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
-class FaceSubdivision
+public class FaceSubdivision
 {
     public int TriangleIndex;
     public Vector3 Center;
-    public (int, int)[] Edges;
-    public int[] EdgePoints;
+    public readonly Edge[] Edges;
+    public readonly Vector3[] EdgePoints;
 
-    public FaceSubdivision()
-    {
-        TriangleIndex = -1;
-        Center = new Vector3();
-        Edges = new (int, int)[3];
-        EdgePoints = new int[3];
-    }
-
-    public FaceSubdivision(int index, Vector3 center, (int, int)[] edges, int[] edgePoins)
+    public FaceSubdivision(int index, Vector3 center, Edge[] edges)
     {
         TriangleIndex = index;
         Center = center;
         Edges = edges;
-        EdgePoints = edgePoins;
+        EdgePoints = new Vector3[3];
+
+        foreach (var edge in Edges)
+        {
+            edge.AddTriangle(this);
+        }
+    }
+
+    public int FindIndexOfEdge(Edge other)
+    {
+        for(var i = 0; i < Edges.Length; i++)
+        {
+            if (Edges[i].Equals(other)) 
+                return i;
+        }
+        return -1;
+    }
+}
+
+public class Edge
+{
+    public readonly int Vertex1;
+    public readonly int Vertex2;
+    public readonly FaceSubdivision[] Triangles;
+    private int _trianglesCount;
+
+    public Edge(int vertex1, int vertex2)
+    {
+        Vertex1 = vertex1;
+        Vertex2 = vertex2;
+        Triangles = new FaceSubdivision[2];
+        _trianglesCount = 0;
+    }
+
+    public bool Equals(Edge other)
+    {
+        return Vertex1 == other.Vertex1 && Vertex2 == other.Vertex2 || Vertex1 == other.Vertex2 && Vertex2 == other.Vertex1;
+    }
+
+    public void AddTriangle(FaceSubdivision triangle)
+    {
+        Triangles[_trianglesCount++] = triangle;
     }
 }
 
 public class CatmullClarkSubdivision : MonoBehaviour
 {
-    public MeshFilter originalMeshFilter;
+    [SerializeField] private MeshFilter originalMeshFilter;
+    [SerializeField] private int currentSubdivision; 
 
     private Mesh _originalMesh;
-
     private List<Vector3>_subdividedVerticesList;
     private List<int> _subdividedTrianglesList;
     
@@ -42,40 +75,84 @@ public class CatmullClarkSubdivision : MonoBehaviour
     private int[] _subdividedTriangles;
 
     private List<FaceSubdivision> _faceSubdivisions;
+    private List<Edge> _edges;
     
-    private Dictionary<(int, int), int[]> _edgesTriangleCouple;
     //private List<GameObject> _pointsList;
+
+    private int _subdivisionCount;
+
+    private List<(int[], Vector3[])> _subdivisionSaves; 
 
     void Start()
     {
         _originalMesh = originalMeshFilter.mesh;
-        _edgesTriangleCouple = new Dictionary<(int, int), int[]>();
         _subdividedVerticesList = new List<Vector3>(_originalMesh.vertices.Length);
         _subdividedTrianglesList = new List<int>(_originalMesh.triangles.Length);
         _faceSubdivisions = new List<FaceSubdivision>(_originalMesh.triangles.Length/3);
-
+        _edges = new List<Edge>();
         //_pointsList = new List<GameObject>();
+        _subdivisionCount = 0;
+        _subdivisionSaves = new List<(int[], Vector3[])>();
+        var triangles = new int[_originalMesh.triangles.Length];
+        _originalMesh.triangles.CopyTo(triangles, 0);
+        var vertices = new Vector3[_originalMesh.vertices.Length];
+        _originalMesh.vertices.CopyTo(vertices, 0);
+        _subdivisionSaves.Add((triangles, vertices));
+        _subdivisionCount++;
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.A))
+        
+        if (Input.GetKeyDown(KeyCode.RightArrow) && currentSubdivision < 3)
         {
-            Subdivide();
+            currentSubdivision++;
+            if(currentSubdivision >= _subdivisionCount)
+                Subdivide();
+            else
+            {
+                _originalMesh = new Mesh
+                {
+                    vertices = _subdivisionSaves[currentSubdivision].Item2,
+                    triangles = _subdivisionSaves[currentSubdivision].Item1
+                };
+                originalMeshFilter.mesh = _originalMesh;
+                originalMeshFilter.mesh.RecalculateNormals();
+            }
+        }
+        else if (Input.GetKeyDown(KeyCode.LeftArrow) && currentSubdivision > 0)
+        {
+            currentSubdivision--;
+            _originalMesh = new Mesh
+            {
+                vertices = _subdivisionSaves[currentSubdivision].Item2,
+                triangles = _subdivisionSaves[currentSubdivision].Item1
+            };
+            originalMeshFilter.mesh = _originalMesh;
+            originalMeshFilter.mesh.RecalculateNormals();
         }
     }
 
     private void Subdivide()
     {
-        Debug.Log("start subdivid : " + DateTime.Now);
-        _edgesTriangleCouple.Clear();
+        Debug.Log("start subdivide : " + DateTime.Now + " n°" + _subdivisionCount);
+        _edges.Clear();
+        _faceSubdivisions.Clear();
         _subdividedVerticesList.Clear();
         _subdividedTrianglesList.Clear();
-        var originalVertices = _originalMesh.vertices;
-        var originalTriangles = _originalMesh.triangles;
         
-        var faceCenters = new Dictionary<int, Vector3>(_originalMesh.triangles.Length);
-        var edgePoints = new Dictionary<Vector3, (int, int)>();
+        var originalVertices = _originalMesh.vertices;
+        int[] originalTriangles;
+        if (_subdivisionCount > 1)
+        {
+            originalTriangles = new int[_originalMesh.triangles.Length / 2];
+            Array.Copy(_originalMesh.triangles, originalTriangles, _originalMesh.triangles.Length / 2);
+        }
+        else
+        {
+            originalTriangles = _originalMesh.triangles;
+        }
+
         var newVertices = new List<Vector3>(originalVertices.Length);
         
         for (var i = 0; i < originalTriangles.Length; i += 3)
@@ -84,52 +161,43 @@ public class CatmullClarkSubdivision : MonoBehaviour
             var v2 = originalTriangles[i+1];
             var v3 = originalTriangles[i+2];
             var faceCenter = (originalVertices[v1] + originalVertices[v2] + originalVertices[v3]) / 3f;
-            faceCenters.Add(i,faceCenter);
 
             var edge1 = (v1, v2);
             var edge2 = (v2, v3);
             var edge3 = (v3, v1);
-            
-            //_faceSubdivisions.Add(new FaceSubdivision(i, faceCenter, ));
-            
-            AddToDictionary(edge1, i);
-            AddToDictionary(edge2, i);
-            AddToDictionary(edge3, i);
+            var index1 = AddEdges(edge1);
+            var index2 = AddEdges(edge2);
+            var index3 = AddEdges(edge3);
+            var edges = new[] {_edges[index1], _edges[index2], _edges[index3]};
+            _faceSubdivisions.Add(new FaceSubdivision(i, faceCenter, edges));
         }
 
-        
-        foreach (var ((item1, item2), triangles) in _edgesTriangleCouple)
+        foreach (var edge in _edges)
         {
-            var localFacePoint = new Vector3[2];
-            var i = 0;
-            foreach (var (t, vec) in faceCenters)
-            {
-                if (t != triangles[0] && t != triangles[1]) continue;
-                localFacePoint[i++] = vec;
-                if (i == 2)
-                    break;
-            }
-            edgePoints.Add((originalVertices[item1] + originalVertices[item2] + localFacePoint[0] + localFacePoint[1]) / 4f, (item1, item2));
+            var edgePoint = (originalVertices[edge.Vertex1] + originalVertices[edge.Vertex2] + edge.Triangles[0].Center +
+                            edge.Triangles[1].Center) / 4f;
+            var index1 = edge.Triangles[0].FindIndexOfEdge(edge);
+            var index2 = edge.Triangles[1].FindIndexOfEdge(edge);
+            if (index1 == -1 || index2 == -1)
+                throw new IndexOutOfRangeException();
+            edge.Triangles[0].EdgePoints[index1] = edgePoint;
+            edge.Triangles[1].EdgePoints[index2] = edgePoint;
         }
 
-        foreach (var t1 in originalVertices)
+        foreach (var vertex in originalVertices)
         {
             var averagePoints = new List<Vector3>();
-            var averageFaces = new List<int>();
-            foreach (var ((vertex1, vertex2), triangles) in _edgesTriangleCouple)
+            var averageFaces = new List<FaceSubdivision>();
+            foreach (var edge in _edges)
             {
-                if (t1 == originalVertices[vertex1] || 
-                    t1 == originalVertices[vertex2])
+                if (originalVertices[edge.Vertex1] != vertex && originalVertices[edge.Vertex2] != vertex) continue;
+                averagePoints.Add((originalVertices[edge.Vertex1] + originalVertices[edge.Vertex2]) / 2);
+                foreach (var t in edge.Triangles)
                 {
-                    averagePoints.Add((originalVertices[vertex1] + originalVertices[vertex2]) / 2);
-                    foreach (var t in triangles)
-                    {
-                        if(!averageFaces.Contains(t))
-                            averageFaces.Add(t);
-                    }
+                    if(!averageFaces.Contains(t))
+                        averageFaces.Add(t);
                 }
             }
-
             var averageMidPoint = new Vector3();
             foreach (var vec in averagePoints)
             {
@@ -140,67 +208,69 @@ public class CatmullClarkSubdivision : MonoBehaviour
             var averageMidFace = new Vector3();
             foreach (var face in averageFaces)
             {
-                averageMidFace += faceCenters[face];
+                averageMidFace += face.Center;
             }
             averageMidFace /= averageFaces.Count;
             
             newVertices.Add(1f / averagePoints.Count * averageMidFace + 2f / averagePoints.Count * averageMidPoint +
-                            (averagePoints.Count - 3f) / averagePoints.Count * t1);
+                            (averagePoints.Count - 3f) / averagePoints.Count * vertex);
         }
 
 
-        foreach (var (t, center) in faceCenters)
-        {
-            var v1 = originalTriangles[t];
-            var v2 = originalTriangles[t+1];
-            var v3 = originalTriangles[t+2];
 
-            
-            foreach (var ((vertex1, vertex2), triangles) in _edgesTriangleCouple)
+        foreach (var triangle in _faceSubdivisions)
+        {
+            _subdividedVerticesList.Add(triangle.Center);
+            var centerIndex = _subdividedVerticesList.IndexOf(triangle.Center);
+            for (var i = 0; i < triangle.Edges.Length; i++)
             {
-                if (!triangles.Contains(t)) continue;
-                foreach (var (vertexEdgePoint, edges) in edgePoints)
-                {
-                    if (edges != (vertex1, vertex2)) continue;
-                    _subdividedVerticesList.Add(center);
-                    _subdividedVerticesList.Add(vertexEdgePoint);
-                    _subdividedVerticesList.Add(newVertices[vertex1]);
-                    _subdividedVerticesList.Add(newVertices[vertex2]);
-                    _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(center));
-                    _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(vertexEdgePoint));
-                    _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(newVertices[vertex1]));
-                    _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(center));
-                    _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(vertexEdgePoint));
-                    _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(newVertices[vertex2]));
-                    break;
-                }
+                _subdividedVerticesList.Add(triangle.EdgePoints[i]);
+                _subdividedVerticesList.Add(newVertices[triangle.Edges[i].Vertex1]);
+                _subdividedVerticesList.Add(newVertices[triangle.Edges[i].Vertex2]);
+                _subdividedTrianglesList.Add(centerIndex);
+                _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(triangle.EdgePoints[i]));
+                _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(newVertices[triangle.Edges[i].Vertex1]));
+                _subdividedTrianglesList.Add(centerIndex);
+                _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(triangle.EdgePoints[i]));
+                _subdividedTrianglesList.Add(_subdividedVerticesList.IndexOf(newVertices[triangle.Edges[i].Vertex2]));
             }
         }
-        
         _subdividedVertices = _subdividedVerticesList.ToArray();
         _subdividedTriangles = _subdividedTrianglesList.ToArray();
         LoopSub.DoubleFaceIndices(ref _subdividedTriangles);
         _originalMesh.vertices = _subdividedVertices;
         _originalMesh.triangles = _subdividedTriangles;
         originalMeshFilter.mesh = _originalMesh;
-        
-        Debug.Log("end subdivid : " + DateTime.Now);
+        originalMeshFilter.mesh.RecalculateNormals();
+        originalMeshFilter.mesh.RecalculateTangents();
+        var triangles = new int[_originalMesh.triangles.Length];
+        _originalMesh.triangles.CopyTo(triangles, 0);
+        var vertices = new Vector3[_originalMesh.vertices.Length];
+        _originalMesh.vertices.CopyTo(vertices, 0);
+        _subdivisionSaves.Add((triangles, vertices));
+        _subdivisionCount++;
+        Debug.Log("end subdivide : " + DateTime.Now);
     }
 
-    private void AddToDictionary((int, int) edge, int triangle)
+    private int AddEdges((int, int) newEdge)
     {
-        foreach (var ((item1, item2), triangles) in _edgesTriangleCouple)
+        foreach (var edge in _edges)
         {
-            if (_originalMesh.vertices[item1] == _originalMesh.vertices[edge.Item1] &&
-                _originalMesh.vertices[item2] == _originalMesh.vertices[edge.Item2] ||
-                _originalMesh.vertices[item2] == _originalMesh.vertices[edge.Item1] &&
-                _originalMesh.vertices[item1] == _originalMesh.vertices[edge.Item2])
-            {
-                triangles[1] = triangle;
-                return;
-            }
+            if (!Compare(edge, newEdge)) continue;
+            return _edges.IndexOf(edge);
         }
-        _edgesTriangleCouple.Add(edge, new []{triangle, -1});
+        var e = new Edge(newEdge.Item1, newEdge.Item2);
+        _edges.Add(e);
+        return _edges.IndexOf(e);
+    }
+
+    private bool Compare(Edge edge1, (int, int) edge2)
+    {
+        var (item1, item2) = edge2;
+        return _originalMesh.vertices[edge1.Vertex1] == _originalMesh.vertices[item1] &&
+               _originalMesh.vertices[edge1.Vertex2] == _originalMesh.vertices[item2] ||
+               _originalMesh.vertices[edge1.Vertex1] == _originalMesh.vertices[item2] &&
+               _originalMesh.vertices[edge1.Vertex2] == _originalMesh.vertices[item1];
     }
 }
 
@@ -214,25 +284,24 @@ public class CatmullClarkSubdivision : MonoBehaviour
 // {
 //     var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
 //     go.transform.position = vertex;
-//     go.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
+//     go.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
 //     go.GetComponent<MeshRenderer>().material.color  = Color.red;
 //     _pointsList.Add(go);
 // }
 //
-// foreach (var vertex in edgePoints)
+// foreach (var face in _faceSubdivisions)
 // {
 //     var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-//     go.transform.position = vertex.Key;
-//     go.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
-//     go.GetComponent<MeshRenderer>().material.color  = Color.blue;
+//     go.transform.position = face.Center;
+//     go.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
+//     go.GetComponent<MeshRenderer>().material.color  = Color.green;
 //     _pointsList.Add(go);
-// }
-//
-// foreach (var vertex in faceCenters)
-// {
-//     var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-//     go.transform.position = vertex.Value;
-//     go.transform.localScale = new Vector3(0.01f, 0.01f, 0.01f);
-//     go.GetComponent<MeshRenderer>().material.color = Color.green;
-//     _pointsList.Add(go);
+//     foreach (var edgePoint in face.EdgePoints)
+//     {
+//         var go2 = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+//         go2.transform.position = edgePoint;
+//         go2.transform.localScale = new Vector3(0.05f, 0.05f, 0.05f);
+//         go2.GetComponent<MeshRenderer>().material.color  = Color.blue;
+//         _pointsList.Add(go);
+//     }
 // }
