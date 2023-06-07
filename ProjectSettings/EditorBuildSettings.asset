@@ -4,5 +4,11 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Shader obj.unity
+    guid: d52d8f21d99a9fe42923f36ccd65e686
+  - enabled: 1
+    path: Assets/Scenes/Catmull Clark.unity
+    guid: 2657ea02632596a4b86eee66e8b7119a
   m_configObjects: {}
