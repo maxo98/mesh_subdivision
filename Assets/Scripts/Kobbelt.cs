@@ -29,7 +29,7 @@ public class Kobbelt : MonoBehaviour
         List<int> triangles;
         List<Vector3> vertices = new List<Vector3>(meshFilter.mesh.vertices);
 
-        List<Vector3> newVertices = new List<Vector3>();
+        List<Vector3> newVertices = new List<Vector3>(vertices);
 
         if(subDivLevels[currentMesh] == true)
         {
@@ -50,7 +50,6 @@ public class Kobbelt : MonoBehaviour
         for(int i = 0; i < sums.Length; i++)
         {
             sums[i] = new HashSet<int>();
-            newVertices.Add(vertices[i]);
         }
 
         for(int i = 0; i < triCenter.Length; i++)
@@ -123,15 +122,9 @@ public class Kobbelt : MonoBehaviour
                 newTri.Add(triCenter[triAdjacent[i][cpt]]);
                 newTri.Add(hold[0]);
 
-                // sums[hold[0]].Add(triCenter[i]);
-                // sums[hold[0]].Add(triCenter[triAdjacent[i][cpt]]);
-
                 newTri.Add(triCenter[i]);
                 newTri.Add(triCenter[triAdjacent[i][cpt]]);
                 newTri.Add(hold[1]);
-
-                // sums[hold[1]].Add(triCenter[i]);
-                // sums[hold[1]].Add(triCenter[triAdjacent[i][cpt]]);
             }
         }
 
@@ -143,22 +136,12 @@ public class Kobbelt : MonoBehaviour
 
             foreach(int index in sums[i])
             {
-                if(index < vertices.Count)
-                {
-                    sum += vertices[index];
-                }else{
-                    sum += newVertices[index];
-                }
-                
+                sum += vertices[index];   
             }
 
             float beta = (4f - 2f * Mathf.Cos(2f * Mathf.PI / sums[i].Count)) / 9f;
 
-            //Debug.Log(sum * 1000 + " " + sums[i].Count);
-
             newVertices[i] = vertices[i] * (1 - beta) + beta / sums[i].Count * sum;
-
-            //Debug.Log(vertices[i] * 1000);
         }
 
         int[] triArray = newTri.ToArray();
