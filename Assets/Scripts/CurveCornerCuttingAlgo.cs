@@ -310,6 +310,7 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
             var Yy = (1 - (step * x)) * pointD.transform.position + (step * x) * pointC.transform.position;
             var defaultPointAPosition = _listPointsSegmented[DirectionSelected.Front][x].transform.position;
             var defaultPointBPosition = _listPointsSegmented[DirectionSelected.Back][x].transform.position;
+            
             for (var y = 0; y < _listPointsSegmented[DirectionSelected.Front].Count; ++y)
             {
                 var position = (1.0f - (step * y)) * new Vector3(defaultPointAPosition.x, Xy.y, defaultPointAPosition.z) + (step * y) * new Vector3(defaultPointBPosition.x, Yy.y, defaultPointBPosition.z);
@@ -349,9 +350,6 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
                 vertices[x * _matrixD.Count + y] = _matrixD[x][y].transform.position;
             }
         }
-
-        var xTriangle = 0;
-        var yTriangle = 0;
 
         for (var x = 0; x < _matrixD.Count() - 1; ++x)
         {

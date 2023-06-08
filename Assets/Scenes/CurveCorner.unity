@@ -167,7 +167,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73b1024701b12274995136a0f43437fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  numberOfPoints: 5
+  numberOfPoints: 7
   mainCamera: {fileID: 371006587}
   pointToDraw: {fileID: 1180495142688951780, guid: a724ea7ea4c348a4788ebe972f828f83, type: 3}
   defaultPointMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
