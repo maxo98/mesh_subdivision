@@ -9,6 +9,7 @@ public class UIManager : MonoBehaviour
     [SerializeField] GameObject previousButton;
     [SerializeField] GameObject nextButton;
     int sceneID = 0;
+    int sceneCount;
     #region Singleton
     public static UIManager instance;
     private void Awake()
@@ -27,6 +28,7 @@ public class UIManager : MonoBehaviour
     void Start()
     {
         DontDestroyOnLoad(gameObject);
+        sceneCount = UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings;
     }
 
     private void Update()
@@ -35,6 +37,11 @@ public class UIManager : MonoBehaviour
         {
             previousButton.SetActive(false);
         }
+        if (sceneID >= sceneCount-1)
+        {
+            nextButton.SetActive(false);
+        }
+        
     }
     public void MoveToNextScene()
     {
@@ -46,5 +53,6 @@ public class UIManager : MonoBehaviour
     {
         sceneID--;
         SceneManager.LoadScene(sceneID);
+        nextButton.SetActive(true);
     }
 }
