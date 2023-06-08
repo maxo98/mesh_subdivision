@@ -38,14 +38,14 @@ public class Edge
     public readonly int Vertex1;
     public readonly int Vertex2;
     public readonly FaceSubdivision[] Triangles;
-    private int _trianglesCount;
+    public int TrianglesCount;
 
     public Edge(int vertex1, int vertex2)
     {
         Vertex1 = vertex1;
         Vertex2 = vertex2;
         Triangles = new FaceSubdivision[2];
-        _trianglesCount = 0;
+        TrianglesCount = 0;
     }
 
     public bool Equals(Edge other)
@@ -55,7 +55,7 @@ public class Edge
 
     public void AddTriangle(FaceSubdivision triangle)
     {
-        Triangles[_trianglesCount++] = triangle;
+        Triangles[TrianglesCount++] = triangle;
     }
 }
 
@@ -171,14 +171,29 @@ public class CatmullClarkSubdivision : MonoBehaviour
 
         foreach (var edge in _edges)
         {
-            var edgePoint = (originalVertices[edge.Vertex1] + originalVertices[edge.Vertex2] + edge.Triangles[0].Center +
-                            edge.Triangles[1].Center) / 4f;
+            Vector3 edgePoint;
+            if (edge.TrianglesCount == 2)
+            {
+                 edgePoint = (originalVertices[edge.Vertex1] + originalVertices[edge.Vertex2] +
+                                 edge.Triangles[0].Center +
+                                 edge.Triangles[1].Center) / 4f;
+            }
+            else
+            {
+                edgePoint = (originalVertices[edge.Vertex1] + originalVertices[edge.Vertex2])/2f;
+            }
+
             var index1 = edge.Triangles[0].FindIndexOfEdge(edge);
-            var index2 = edge.Triangles[1].FindIndexOfEdge(edge);
-            if (index1 == -1 || index2 == -1)
+            if (index1 == -1)
                 throw new IndexOutOfRangeException();
             edge.Triangles[0].EdgePoints[index1] = edgePoint;
-            edge.Triangles[1].EdgePoints[index2] = edgePoint;
+            if (edge.TrianglesCount == 2)
+            {
+                var index2 = edge.Triangles[1].FindIndexOfEdge(edge);
+                if (index2 == -1)
+                    throw new IndexOutOfRangeException();
+                edge.Triangles[1].EdgePoints[index2] = edgePoint;
+            }
         }
 
         foreach (var vertex in originalVertices)
