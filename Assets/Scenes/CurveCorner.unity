@@ -174,6 +174,7 @@ MonoBehaviour:
   segmentationPointMaterial: {fileID: 2100000, guid: bd0a315ea1d2bae4a969d651b0d9f85c, type: 2}
   meshPointMaterial: {fileID: 2100000, guid: b3527b0d1a91cd04e96a311f2261a68b, type: 2}
   finalPointMaterial: {fileID: 2100000, guid: 1e248bb644b2bb94eaead8ebdaba89bf, type: 2}
+  finalMeshMaterial: {fileID: 2100000, guid: e03b979668611084895bc6d8f7028481, type: 2}
   u: 0.33
   v: 0.66
   pointA: {fileID: 0}

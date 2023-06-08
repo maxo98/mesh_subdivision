@@ -23,6 +23,7 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
     [SerializeField] private Material segmentationPointMaterial;
     [SerializeField] private Material meshPointMaterial;
     [SerializeField] private Material finalPointMaterial;
+    [SerializeField] private Material finalMeshMaterial;
     [SerializeField] private float u;
     [SerializeField] private float v;
     
@@ -99,9 +100,10 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
         {
             Segmentation();
             BuildGrid(_listPointsSegmented[DirectionSelected.Front], _listPointsSegmented[DirectionSelected.Back], _listPointsSegmented[DirectionSelected.Right].Count, _matrixA);
-            BuildGrid(_listPointsSegmented[DirectionSelected.Right], _listPointsSegmented[DirectionSelected.Left], _listPointsSegmented[DirectionSelected.Front].Count, _matrixB);
+            BuildGrid(_listPointsSegmented[DirectionSelected.Left], _listPointsSegmented[DirectionSelected.Right], _listPointsSegmented[DirectionSelected.Front].Count, _matrixB);
             BuildGridC();
             BuildCoons();
+            BuildFinalMesh();
         }
     }
 
@@ -330,6 +332,75 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
 
                 var finalPointPosition = pointA + pointB - pointC;
                 InstantiatePoint(finalPointPosition, finalPointMaterial, _matrixD[^1]);
+            }
+        }
+    }
+
+    private void BuildFinalMesh()
+    {
+        var vertices = new Vector3[_matrixD.Count * _matrixD[0].Count];
+        //var triangles = new int[(vertices.Length / 2) * 3];
+        var triengles = new List<int>();
+        
+        for (var x = 0; x < _matrixD.Count; ++x)
+        {
+            for (var y = 0; y < _matrixD[x].Count; ++y)
+            {
+                vertices[x * _matrixD.Count + y] = _matrixD[x][y].transform.position;
+            }
+        }
+
+        var xTriangle = 0;
+        var yTriangle = 0;
+
+        for (var x = 0; x < _matrixD.Count() - 1; ++x)
+        {
+            for (var y = 0; y < _matrixD[x].Count() - 1; ++y)
+            {
+                triengles.Add(x * _matrixD.Count() + y);
+                triengles.Add((x + 1) * _matrixD.Count() + y);
+                triengles.Add(x * _matrixD.Count() + y + 1);
+
+                triengles.Add((x + 1) * _matrixD.Count() + y);
+                triengles.Add((x + 1) * _matrixD.Count() + y + 1);
+                triengles.Add(x * _matrixD.Count() + y + 1);
+                
+            }
+        }
+
+        var triangles = triengles.ToArray();
+        
+        DoubleFaceIndices(ref triangles);
+        
+        var mesh = new Mesh
+        {
+            vertices = vertices,
+            triangles = triangles
+        };
+
+        var meshGameObject = new GameObject("Final Mesh", typeof(MeshFilter), typeof(MeshRenderer));
+        meshGameObject.GetComponent<MeshFilter>().mesh = mesh;
+        meshGameObject.GetComponent<MeshRenderer>().material = finalMeshMaterial;
+    }
+    
+    private static void DoubleFaceIndices(ref int[] indices)
+    {
+        int n = 3;
+
+        if ((indices.Length % n) != 0)
+        {
+            return;
+        }
+
+        int indicesLength = indices.Length;
+
+        Array.Resize(ref indices, indices.Length * 2);
+
+        for (int i = 0; i < indicesLength; i += n)
+        {
+            for (int cpt = 0; cpt < n; cpt++)
+            {
+                indices[indicesLength + i + cpt] = indices[i + n - 1 - cpt];
             }
         }
     }
