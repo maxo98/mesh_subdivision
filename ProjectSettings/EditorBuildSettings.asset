@@ -11,4 +11,13 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Catmull Clark.unity
     guid: 2657ea02632596a4b86eee66e8b7119a
+  - enabled: 1
+    path: Assets/Scenes/CurveCorner.unity
+    guid: b277ba2fba95a174a9cae7e4b3c32584
+  - enabled: 1
+    path: Assets/Scenes/Loop.unity
+    guid: e3ff430f060450340927527e39737d60
+  - enabled: 1
+    path: Assets/Scenes/Kobbelt.unity
+    guid: c0e877e3705f97a409412f26b42f3495
   m_configObjects: {}

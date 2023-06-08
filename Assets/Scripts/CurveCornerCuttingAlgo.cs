@@ -94,8 +94,14 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
         lr.SetPosition(0, startPosition);
         lr.SetPosition(1, endPosition);
     }
-    private void ManagerKeyboard()
+    public void ManagerKeyboard()
     {
+        //Segmentation();
+        //BuildGrid(_listPointsSegmented[DirectionSelected.Front], _listPointsSegmented[DirectionSelected.Back], _listPointsSegmented[DirectionSelected.Right].Count, _matrixA);
+        //BuildGrid(_listPointsSegmented[DirectionSelected.Left], _listPointsSegmented[DirectionSelected.Right], _listPointsSegmented[DirectionSelected.Front].Count, _matrixB);
+        //BuildGridC();
+        //BuildCoons();
+        //BuildFinalMesh();
         if (Input.GetKeyDown(KeyCode.T))
         {
             Segmentation();
@@ -194,6 +200,9 @@ public class CurveCornerCuttingAlgo : MonoBehaviour
     
     private void OnLeftClick()
     {
+        if (_listPointsByFace[_idDirectionSelected].Count >= numberOfPoints)
+            return;
+
         var ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         var layerMask = LayerMask.GetMask("PlanClickable");
 
